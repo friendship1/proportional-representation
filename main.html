@@ -1,0 +1,203 @@
+<p>정당 수를 입력하세요.</p>
+<input type="number" id="inputN">
+<button onclick="inputN()">다음단계로</button> </br>
+<div id="message"></div>
+
+
+
+<script type="text/javascript">
+var N;
+const reducer = (accumulator, currentValue) => accumulator + currentValue;
+
+function inputN(){
+N = document.getElementById("inputN").value;
+
+
+document.write("국회의원 정원: <input type=\"number\" id=\"total\" value=\"300\"> <br>");
+document.write("국회의원 정원 중 비례대표 정원: <input type=\"number\" id=\"ptotal\" value=\"47\"> <br>");
+document.write("비례대표 정원 중 연동형 비례대표 정원: <input type=\"number\" id=\"iptotal\" value=\"30\"> <br>");
+document.write("연동형 비례대표의 연동률 %: <input type=\"number\" id=\"irate\" value=\"50\"> <br>");
+document.write("무소속 의원: <input type=\"number\" id=\"nptotal\" value=\"0\"> <br>");
+document.write("_________지역구 대표 선출 인원____비례대표 득표 비율% <br>");
+for(var i = 0; i < N; i++) {
+    document.write(String.fromCharCode(i + 65) + "정당: ");
+    document.write("<input type=\"number\" id=\"local" + String(i) + "\"> ");
+    document.write("<input type=\"number\" id=\"propo" + String(i) + "\"> <br>");
+}
+document.write("<button onclick=\"calculate()\">계산하기</button> </br></br>")
+document.write("결과:_______총 선출 인원_______준연동형비례인원_____2020특례 비례대표 인원 <br>");
+for(var i = 0; i < N; i++) {
+    document.write(String.fromCharCode(i + 65) + "정당: ");
+    document.write("<textarea id=\"tout" + String(i) + "\"></textarea> ");
+    document.write("<textarea id=\"pout" + String(i) + "\"></textarea> ");
+    document.write("<textarea id=\"eout" + String(i) + "\"></textarea> <br><br>");
+}
+}
+
+var real_expt_seats_d = new Array(N);
+var real_prop_seats_d = new Array(N);
+
+function calculate() {
+    var total = Number(document.getElementById("total").value);
+    var ptotal = Number(document.getElementById("ptotal").value);
+    var iptotal = Number(document.getElementById("iptotal").value);
+    var nptotal = Number(document.getElementById("nptotal").value);
+    var irate = Number(document.getElementById("irate").value);
+    var locals = new Array(N);
+    var raw_propos = new Array(N);
+    var propos = new Array(N);
+    console.log("ny");
+    for(var i = 0; i < N; i++) {
+        locals[i] = Number(document.getElementById("local" + String(i) ).value);
+        raw_propos[i] = Number(document.getElementById("propo" + String(i) ).value);
+    }
+
+    // 의석할당정당인지 아닌지 체크한다.
+    // 제189조제1항
+    var isbigp = new Array(N);
+    var smallp_local_total = 0; // 의석할당정당이 추천하지 않은 지역구국회의원당선인수
+    for(var i = 0; i < N; i++) {
+        if(propos[i] >= 3.0 || locals[i] >= 5) {
+            isbigp[i] = true;
+        }
+        else {
+            isbigp[i] = false;
+            smallp_local_total += locals[i];
+        }
+    }
+    // 의석할당정당에 대해서만 비례대표국회의원선거비율 계산
+    // 제189조제3항
+    for(var i = 0; i < N; i++) {
+        if(isbigp) {
+            propos[i] = raw_propos[i] / raw_propos.reduce(reducer);
+        }
+    }
+    // 연동배분의석수 계산
+    // 제189조제2항1호
+    var prop_seats = new Array(N); // 연동배분의석수
+    var prop_seats_total = 0;
+    for(var i = 0; i < N; i++) {
+        if(isbigp[i]) {
+            var tmp = ((total - smallp_local_total) * propos[i] - locals[i]) / 2;
+            if(tmp < 1.0) {
+                tmp = 0;
+            }
+            prop_seats[i] = Math.round(tmp);
+            prop_seats_total += prop_seats[i];
+        }
+        else {
+            prop_seats[i] = 0;
+        }
+    }
+    var real_prop_seats = new Array(N);
+    // 연동배분의석수의 합계가 미달할 경우
+    // 제189조제2항2호
+    var remain_seats = new Array(N) // 잔여배분의석수
+    if(prop_seats_total < iptotal) {
+        for(var i = 0; i < N; i++) {
+            if(isbigp[i]){
+                remain_seats[i] = (iptotal - prop_seats_total) * propos[i];
+            }
+        }
+        var current_prop_seats_tmp = 0;
+        for(var i = 0; i < N; i++) {
+            if(isbigp[i]){
+                real_prop_seats[i] = prop_seats[i] + Math.floor(remain_seats[i]);
+                current_prop_seats_tmp += real_prop_seats[i];
+                remain_seats[i] = remain_seats[i] - Math.floor(remain_seats[i]);
+            }
+        }
+        while(current_prop_seats_tmp != iptotal) {
+            var max_demical = -1;
+            var max_demical_idx = 0;
+            for(var i = 0; i < N; i++) {
+                if(isbigp[i]) {
+                    if(max_demical < remain_seats[i]) {
+                        max_demical_idx = i;
+                        max_demical = remain_seats[i];
+                    }
+                }
+            }
+            real_prop_seats[max_demical_idx] += 1;
+            current_prop_seats_tmp += 1;
+            remain_seats[max_demical_idx] = 0;
+        }
+    }
+    // 연동배분의석수의 합계가 초과할 경우
+    // 제189조2항3호
+    var adjust_seats = new Array(N);
+    if(prop_seats_total > iptotal) {
+        for(var i = 0; i < N; i++) {
+            if(isbigp[i]) {
+                adjust_seats[i] = iptotal * (prop_seats[i] / prop_seats.reduce(reducer));
+            }
+        }
+        var current_prop_seats_tmp = 0;
+        for(var i = 0; i < N; i++) {
+            if(isbigp[i]){
+                real_prop_seats[i] = Math.floor(adjust_seats[i]);
+                current_prop_seats_tmp += real_prop_seats[i];
+                adjust_seats[i] = adjust_seats[i] - Math.floor(adjust_seats[i]);
+            }
+        }
+        while(current_prop_seats_tmp != iptotal) {
+            var max_demical = -1;
+            var max_demical_idx = 0;
+            for(var i = 0; i < N; i++) {
+                if(isbigp[i]) {
+                    if(max_demical < adjust_seats[i]) {
+                        max_demical_idx = i;
+                        max_demical = adjust_seats[i];
+                    }
+                }
+            }
+            real_prop_seats[max_demical_idx] += 1;
+            current_prop_seats_tmp += 1;
+            adjust_seats[max_demical_idx] = 0;
+        }
+    }
+    // 2020년 총선 특례
+    // 부칙 제4조2항
+    var expt_seat_total = ptotal - iptotal;
+    var expt_seats = new Array(N);
+    var real_expt_seats = new Array(N);
+    for(var i = 0; i < N; i++) {
+        if(isbigp) {
+            expt_seats[i] = expt_seat_total * propos[i];
+        }
+    }
+    var current_expt_seats_tmp = 0;
+    for(var i = 0; i < N; i++) {
+        if(isbigp[i]){
+            real_expt_seats[i] = Math.floor(expt_seats[i]);
+            current_expt_seats_tmp += real_expt_seats[i];
+            expt_seats[i] = expt_seats[i] - Math.floor(expt_seats[i]);
+        }
+    }
+    while(current_expt_seats_tmp != expt_seat_total) {
+        var max_demical = -1;
+        var max_demical_idx = 0;
+        for(var i = 0; i < N; i++) {
+            if(isbigp[i]) {
+                if(max_demical < expt_seats[i]) {
+                    max_demical_idx = i;
+                    max_demical = expt_seats[i];
+                }
+            }
+        }
+        real_expt_seats[max_demical_idx] += 1;
+        current_expt_seats_tmp += 1;
+        expt_seats[max_demical_idx] = 0;
+    }
+    // write outputs
+    for(var i = 0; i < N; i++) {
+        document.getElementById("tout" + String(i)).value = real_prop_seats[i] + real_expt_seats[i] + locals[i];
+        document.getElementById("pout" + String(i)).value = real_prop_seats[i];
+        document.getElementById("eout" + String(i)).value = real_expt_seats[i];
+    }
+    real_expt_seats_d = real_expt_seats;
+    real_prop_seats_d = real_prop_seats;
+}
+console.log("my")
+</script>
+
