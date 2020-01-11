@@ -78,7 +78,7 @@ function calculate() {
     var prop_seats_total = 0;
     for(var i = 0; i < N; i++) {
         if(isbigp[i]) {
-            var tmp = ((total - smallp_local_total) * propos[i] - locals[i]) / 2;
+            var tmp = ((total - smallp_local_total - nptotal) * propos[i] - locals[i]) * (irate / 100);
             if(tmp < 1.0) {
                 tmp = 0;
             }
