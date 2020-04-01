@@ -57,7 +57,7 @@ function calculate() {
     var isbigp = new Array(N);
     var smallp_local_total = 0; // 의석할당정당이 추천하지 않은 지역구국회의원당선인수
     for(var i = 0; i < N; i++) {
-        if(propos[i] >= 3.0 || locals[i] >= 5) {
+        if(raw_propos[i] >= 3.0 || locals[i] >= 5) {
             isbigp[i] = true;
         }
         else {
